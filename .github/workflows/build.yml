@@ -19,11 +19,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-esp32-s3
+          max-size: 500M
+
       - name: Build variant
         shell: bash
         run: |
+          export CCACHE_DIR=$GITHUB_WORKSPACE/.ccache
           source $IDF_PATH/export.sh
-          # 只编译用户的 128x32 型号
+          # 使用 ccache 加速
+          idf.py -DCCACHE_ENABLE=1 build
+          # 之后再调用 release 脚本打包
           python scripts/release.py bread-compact-wifi --name bread-compact-wifi
 
       - name: Upload artifacts
