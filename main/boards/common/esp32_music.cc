@@ -950,12 +950,23 @@ void Esp32Music::PlayAudioStream() {
                         memcpy(final_pcm_data_fft, final_pcm_data, needed_fft_size);
                     }
                 
-                ESP_LOGD(TAG, "Sending %d PCM samples (%d bytes, rate=%d, channels=%d->1) to Application", 
-                        final_sample_count, pcm_size_bytes, mp3_frame_info_.samprate, mp3_frame_info_.nChans);
-                
-                // 发送到Application的音频解码队列
-                app.AddAudioData(std::move(packet));
-                total_played += pcm_size_bytes;
+                    // 创建AudioStreamPacket (FIX: 补回被误删的变量定义)
+                    AudioStreamPacket packet;
+                    packet.sample_rate = mp3_frame_info_.samprate;
+                    packet.frame_duration = 60;  // 使用Application默认的帧时长
+                    packet.timestamp = 0;
+                    
+                    // 将int16_t PCM数据转换为uint8_t字节数组
+                    size_t pcm_size_bytes = final_sample_count * sizeof(int16_t);
+                    packet.payload.resize(pcm_size_bytes);
+                    memcpy(packet.payload.data(), final_pcm_data, pcm_size_bytes);
+
+                    ESP_LOGD(TAG, "Sending %d PCM samples (%d bytes, rate=%d, channels=%d->1) to Application", 
+                            final_sample_count, pcm_size_bytes, mp3_frame_info_.samprate, mp3_frame_info_.nChans);
+                    
+                    // 发送到Application的音频解码队列
+                    app.AddAudioData(std::move(packet));
+                    total_played += pcm_size_bytes;
                 
                 // 打印播放进度
                 if (total_played % (128 * 1024) == 0) {
